@@ -1,1 +1,119 @@
 This provides the script for preimputation in the SPARK dataset
+
+# SPARK Genetic QC
+
+This is the script to run QC in the SPARK dataset.
+
+## Prerequisites: Install the packages
+
+1. Plink
+http://zzz.bwh.harvard.edu/plink/download.shtml
+
+2. KING
+http://people.virginia.edu/~wc9c/KING/Download.htm
+
+3. 1000 genomes: phase 3, hg19
+```{bash}
+wget http://people.virginia.edu/~wc9c/KING/KGref.tar.gz
+tar -xvf KGref.tar.gz
+```
+
+4. Genesis and related packages (in R)
+```{R}
+setwd("~/ABCD/ABCDgenotype/Genotype_preimputation")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("GWASTools")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("GENESIS")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("SNPRelate")
+
+Install.packages('umap')
+```
+
+5. File check for Michigan/TOPMED imputation server (in terminal)
+```{bash}
+wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.2.9.zip
+unzip HRC-1000G-check-bim-v4.2.9.zip
+
+wget http://www.well.ox.ac.uk/~wrayner/tools/1000GP_Phase3_combined.legend.gz
+gunzip 1000GP_Phase3_combined.legend.gz
+````
+
+
+
+### Step 0: Check Genomic Build
+This will create a genomic build file. Ideally, we want to work with hg19 as the 1000 Genomes file is hg19. Read the bim file and compare the positions of the first few SNPs in dbSNPs. No specific scripts for this available. I did this in R. 
+
+### Step 1: Run SNP level and sample-level QC
+Basic SNP level and sample level QC excluding HWE at a SNP level and excessive heterogeneity at a sample level due to multiple ancestries.
+1.1: geno 0.01 --> QC1output
+1.2: mind0.05 and me 0.05 0.1 --> QC2outupt
+2.3: check-sex, followed by remove --> QC3output
+
+```{bash}
+run 1_basicQC.sh
+```
+
+### Step 2: Merge with 1000G and run KING to calculate relatedness
+To conduct PCA and identify genetic ancestry subgroups, first merge with 1000G and then run KING kinship on all individuals (inc 1000G).
+
+
+```{bash}
+run 2_mergewith1KG_kinship.sh
+```
+
+### Step 3: Generating PCS with GENESIS
+This takes the files generated, prunes, identified unrelated individuals from the kinship matrix, calculates PCs in the unrelated individuals, and then projects PCs on the related individuals
+
+```{bash}
+Rscript 3_SPARK_PCgeneration.R
+```
+
+### Step 4: Using UMAP to identify cluster
+This step requires interaction and making decisions. This also requires Dataset_1KG_population.txt to better map self-identified ethncities to genetic ancestry. This uses the PCs created in Step 5. Edit 6_UMAPclustering.R and use it on an Rstudio to creat plots.
+
+```{bash}
+Rscript 4_SPARK_PCbasedclustering.R
+```
+
+
+### Step 5: Second round of QC at cluster level
+Now that clusters have been identified, we can do the second round of QC - HWE at SNP level and remove samples with excessive heterozygosity at an individual level.
+
+```{bash}
+run 5_secondroudnQC.sh
+```
+
+### Step 6: Combine, and run basic check for imputation
+Now, combine all the independent cluster files, keep only SNPs found in atleast 5% (again, this may have been skewed with the HWE), generate frequency file, and run a check to see if it is ready for imputation.
+
+```{bash}
+run 6_combineandcheck.sh
+```
+
+### Step 7: Clean files files and generate vcf for each chromosome
+This is the final pre-imputation step. We  clean the plink binary to make it ready for imputation, seperate it into 23 chromosomes (23rd being the X chromosome), and create vcfs. 
+
+```{bash}
+run 7_finalstep.sh
+```
+
+### Step 10: Create PCs for using the cleaned version of the dataset
+We will now return back to genesis to create PCs for the cleaned version of the dataset, that can then be used in the analyses. We will keep only the individuals in ABCD and SNPs with maf > 1% and generate both relatedness and PCs.
+
+```{bash}
+run 10a_PCs.sh
+```
+
+```{bash}
+Rscript 10b_PCs.R
+```
