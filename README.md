@@ -11,3 +11,12 @@ for i in {1..22}; do ./plink --bfile SPARK_CEU_chr${i}_binary_hg19 --exclude SPA
 for i in {1..22}; do rm SPARKCEU_chr${i}_hg19_v2*; done
 
 ```
+### Generate Principal components
+First, using the CEU files, understand relatedness
+
+```{bash}
+./king -b QC4_CEU.bed --kinship --prefix QC4_CEU_kinship
+```
+
+Next, use PCAir to create PCs
+
