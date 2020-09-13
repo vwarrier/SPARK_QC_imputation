@@ -86,18 +86,18 @@ Rscript 4_SPARK_PCbasedclustering.R
 ```
 
 
-### Step 5: Second round of QC at cluster level
+### Step 5: Second round of QC at cluster level and combine the files
 Now that clusters have been identified, we can do the second round of QC - HWE at SNP level and remove samples with excessive heterozygosity at an individual level.
 
 ```{bash}
 run 5_secondroudnQC.sh
 ```
 
-### Step 6: Combine, and run basic check for imputation
+### Step 6: Run basic check for imputation
 Now, combine all the independent cluster files, keep only SNPs found in atleast 5% (again, this may have been skewed with the HWE), generate frequency file, and run a check to see if it is ready for imputation.
 
 ```{bash}
-run 6_combineandcheck.sh
+run 6_check.sh
 ```
 
 ### Step 7: Clean files files and generate vcf for each chromosome
